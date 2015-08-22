@@ -1,0 +1,13 @@
+Package: com.rpetrich.skippy
+Name: Skippy
+Depends: firmware (>= 8.0), mobilesubstrate (>= 0.9.5001)
+Version: 0.1
+Architecture: iphoneos-arm
+Description: HUD for quick index jumps
+Maintainer: thebigboss.org <http://thebigboss.org>
+Author: Ryan Petrich <rpetrich+skippy@gmail.com>
+Section: Tweaks
+Tag: purpose::extension
+Homepage: http://rpetri.ch/cydia/skippy/
+Depiction: http://rpetri.ch/cydia/skippy/
+dev: rpetrich
