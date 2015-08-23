@@ -124,3 +124,51 @@ static const bool kSkippyView = false;
 
 %end
 
+@interface SKUIIndexBarEntry : NSObject
+@property (nonatomic, readonly) NSAttributedString *entryAttributedString;
+@property (nonatomic, readonly) UIImage *entryImage;
++ (instancetype)entryWithAttributedString:(NSAttributedString *)attributedString;
++ (instancetype)entryWithImage:(UIImage *)image;
+@end
+
+@interface SKUIIndexBarControl : UIControl
+- (SKUIIndexBarEntry *)_entryAtIndexPath:(NSIndexPath *)indexPath;
+@end
+
+%hook SKUIIndexBarControl
+
+- (void)_sendSelectionForTouch:(UITouch *)touch withEvent:(UIEvent *)event
+{
+	%orig();
+	NSIndexPath *indexPath = [self valueForKey:@"_lastSelectedIndexPath"];
+	[SkippyView overlayText:indexPath ? [self _entryAtIndexPath:indexPath].entryAttributedString.string : nil onView:self];
+}
+
+- (void)cancelTrackingWithEvent:(UIEvent *)event
+{
+	%orig();
+	[SkippyView dismissOverlayOnView:self];
+}
+
+- (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event
+{
+	BOOL result = %orig();
+	if (!result) {
+		[SkippyView dismissOverlayOnView:self];
+	}
+	return result;
+}
+
+- (void)endTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event
+{
+	%orig();
+	[SkippyView dismissOverlayOnView:self];
+}
+
+- (void)willMoveToWindow:(UIWindow *)window
+{
+	%orig();
+	[SkippyView dismissOverlayOnView:self];
+}
+
+%end
