@@ -44,20 +44,11 @@ __attribute__((visibility("hidden")))
 	[super dealloc];
 }
 
-@end
-
 static const bool kSkippyView = false;
 
-@interface UITableViewIndex : UIControl
-@property (nonatomic,readonly) NSString *selectedSectionTitle;
-@end
-
-%hook UITableViewIndex
-
-- (void)_selectSectionForTouch:(UITouch *)touch withEvent:(UIEvent *)event
++ (void)overlayText:(NSString *)text onView:(UIView *)view
 {
-	%orig();
-	UIWindow *window = self.window;
+	UIWindow *window = view.window;
 	SkippyView *skippy = objc_getAssociatedObject(window, &kSkippyView);
 	if (!skippy) {
 		UIView *targetView = window.rootViewController.view ?: window.subviews[0];
@@ -70,35 +61,51 @@ static const bool kSkippyView = false;
 		[skippy.superview bringSubviewToFront:skippy];
 		skippy.hidden = NO;
 	}
-	skippy.label.text = self.selectedSectionTitle;
+	skippy.label.text = text;
 	[UIView animateWithDuration:0.00 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
 		skippy.alpha = 1.0;
 	} completion:NULL];
 }
 
-static void CancelSkippyForIndex(UITableViewIndex *self)
++ (void)dismissOverlayOnView:(UIView *)view
 {
-	SkippyView *skippy = objc_getAssociatedObject(self.window, &kSkippyView);
+	SkippyView *skippy = objc_getAssociatedObject(view.window, &kSkippyView);
 	[UIView animateWithDuration:0.5 delay:0.25 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
 		skippy.alpha = 0.0;
 	} completion:^(BOOL finished) {
 		if (finished) {
 			skippy.hidden = YES;
+			objc_setAssociatedObject(skippy.window, &kSkippyView, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+			[skippy removeFromSuperview];
 		}
 	}];
+}
+
+@end
+
+@interface UITableViewIndex : UIControl
+@property (nonatomic,readonly) NSString *selectedSectionTitle;
+@end
+
+%hook UITableViewIndex
+
+- (void)_selectSectionForTouch:(UITouch *)touch withEvent:(UIEvent *)event
+{
+	%orig();
+	[SkippyView overlayText:self.selectedSectionTitle onView:self];
 }
 
 - (void)cancelTrackingWithEvent:(UIEvent *)event
 {
 	%orig();
-	CancelSkippyForIndex(self);
+	[SkippyView dismissOverlayOnView:self];
 }
 
 - (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event
 {
 	BOOL result = %orig();
 	if (!result) {
-		CancelSkippyForIndex(self);
+		[SkippyView dismissOverlayOnView:self];
 	}
 	return result;
 }
@@ -106,13 +113,13 @@ static void CancelSkippyForIndex(UITableViewIndex *self)
 - (void)endTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event
 {
 	%orig();
-	CancelSkippyForIndex(self);
+	[SkippyView dismissOverlayOnView:self];
 }
 
 - (void)willMoveToWindow:(UIWindow *)window
 {
 	%orig();
-	CancelSkippyForIndex(self);
+	[SkippyView dismissOverlayOnView:self];
 }
 
 %end
