@@ -44,19 +44,24 @@ __attribute__((visibility("hidden")))
 	[super dealloc];
 }
 
++ (UIView *)targetViewForView:(UIView *)view
+{
+	UIWindow *window = view.window;
+	return window.rootViewController.view ?: window.subviews[0];
+}
+
 static const bool kSkippyView = false;
 
 + (void)overlayText:(NSString *)text onView:(UIView *)view
 {
-	UIWindow *window = view.window;
-	SkippyView *skippy = objc_getAssociatedObject(window, &kSkippyView);
+	UIView *targetView = [self targetViewForView:view];
+	SkippyView *skippy = objc_getAssociatedObject(targetView, &kSkippyView);
 	if (!skippy) {
-		UIView *targetView = window.rootViewController.view ?: window.subviews[0];
 		skippy = [[[SkippyView alloc] initWithFrame:targetView.bounds] autorelease];
 		skippy.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 		skippy.alpha = 0.0;
 		[targetView addSubview:skippy];
-		objc_setAssociatedObject(window, &kSkippyView, skippy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+		objc_setAssociatedObject(targetView, &kSkippyView, skippy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	} else {
 		[skippy.superview bringSubviewToFront:skippy];
 		skippy.hidden = NO;
@@ -69,13 +74,14 @@ static const bool kSkippyView = false;
 
 + (void)dismissOverlayOnView:(UIView *)view
 {
-	SkippyView *skippy = objc_getAssociatedObject(view.window, &kSkippyView);
+	UIView *targetView = [self targetViewForView:view];
+	SkippyView *skippy = objc_getAssociatedObject(targetView, &kSkippyView);
 	[UIView animateWithDuration:0.5 delay:0.25 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
 		skippy.alpha = 0.0;
 	} completion:^(BOOL finished) {
 		if (finished) {
 			skippy.hidden = YES;
-			objc_setAssociatedObject(skippy.window, &kSkippyView, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+			objc_setAssociatedObject(targetView, &kSkippyView, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 			[skippy removeFromSuperview];
 		}
 	}];
